@@ -15,4 +15,6 @@ public interface RecensioneRepository extends JpaRepository<Recensione, Long> {
 
 
     Recensione findByAcquisto(Acquisto c);
+
+    List<Recensione> findAllByAcquisti(List<Acquisto> acquisti);
 }

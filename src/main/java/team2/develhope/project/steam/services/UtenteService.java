@@ -65,32 +65,29 @@ public class UtenteService {
 
     public HttpStatus acquista(Long idUtente, Long idVideogioco) throws Exception {
         Utente utente = utenteRepository.getReferenceById(idUtente);
-        Videogioco videogioco = videogiocoRepository.getReferenceById((idVideogioco.longValue()));
-        List<Acquisto> acquistos = acquistoRepository.findAll();
-        try {
-            if (videogioco == null) {
-                throw new Exception();
+        Videogioco videogioco = videogiocoRepository.getReferenceById(idVideogioco);
+
+        if (videogioco == null) {
+            return HttpStatus.valueOf("Il gioco richiesto non è disponibile.");
+        }
+
+        List<Acquisto> acquistos = acquistoRepository.findByUtente(utente);
+        for (Acquisto a : acquistos) {
+            if (a.getGioco().getIdVideogioco() == idVideogioco) {
+                return HttpStatus.valueOf("Hai già acquistato questo gioco.");
             }
-        } catch (Exception e) {
-            HttpStatus status = HttpStatus.valueOf("GIOCO NON DISPONIBILE");
         }
 
-       {
-                if (utente.getSaldo() >= videogioco.getPrezzo()) {
-                    Acquisto newAcquisto = new Acquisto(utente, videogioco, Timestamp.valueOf(LocalDateTime.now()), true);
-                    double saldoAggiornato = utente.getSaldo() - videogioco.getPrezzo();
-                    utente.setSaldo(saldoAggiornato);
-                    utenteRepository.saveAndFlush(utente);
-                    for (Acquisto a:acquistos) {
-                        if(a.getGioco().getIdVideogioco() == idVideogioco && a.getUtente().getIdUtente() == idUtente){throw new Exception("Hai già acquistato il titolo");
-                    }}
-                    acquistoRepository.saveAndFlush(newAcquisto);
-                    HttpStatus status = HttpStatus.OK;
-                    return status;
-                }
-
+        if (utente.getSaldo() >= videogioco.getPrezzo()) {
+            Acquisto newAcquisto = new Acquisto(utente, videogioco, Timestamp.valueOf(LocalDateTime.now()), true);
+            double saldoAggiornato = utente.getSaldo() - videogioco.getPrezzo();
+            utente.setSaldo(saldoAggiornato);
+            utenteRepository.saveAndFlush(utente);
+            acquistoRepository.saveAndFlush(newAcquisto);
+            return HttpStatus.OK;
         }
-        return HttpStatus.OK;
+
+        return HttpStatus.valueOf("Non hai abbastanza credito per acquistare questo gioco.");
     }
 
     public void eliminaGioco(Long id) {
@@ -110,30 +107,31 @@ public class UtenteService {
         }
     }
 
-    public List<Recensione> visualizzaRecensioniGioco(Long id) {
+    public List<Recensione> visualizzaRecensioniGioco(Long id) throws Exception {
 
-        List<Acquisto> acquistiByVideogioco = acquistoRepository.findAllByGioco(videogiocoRepository.findById(id));
-        List<Recensione> recensioni = recensioneRepository.findAll();
         List<Recensione> recensioniVideogioco = new ArrayList<>();
 
-        try {
-            if (acquistiByVideogioco.isEmpty()) throw new Exception();
-            for (Recensione r : recensioni) {
-                for (Acquisto a : acquistiByVideogioco)
-                    if (r.getAcquisto().getId_Acquisto() == a.getId_Acquisto()) {
-                        recensioniVideogioco.add(r);
-                    }
-            }
-        } catch (Exception e) {
-            HttpStatus status = HttpStatus.valueOf("QUESTO GIOCO NON E' DISPONIBILE ! ");
+        // Verifica se il gioco esiste
+        Optional<Videogioco> videogioco = videogiocoRepository.findById(id);
+        if (!videogioco.isPresent()) {
+            throw new Exception("Gioco non trovato.");
         }
-        try {
-            if (recensioni.isEmpty()) {
-                throw new Exception();
-            }
-        } catch (Exception e) {
-            HttpStatus status = HttpStatus.valueOf("QUESTO GIOCO NON HA RECENSIONI AL MOMENTO !");
+
+        // Recupera gli acquisti associati al gioco
+        List<Acquisto> acquistiByVideogioco = acquistoRepository.findAllByGioco(videogioco);
+
+        // Verifica se ci sono acquisti
+        if (acquistiByVideogioco.isEmpty()) {
+            // gestione dell'errore
+            throw new Exception("Il gioco non è mai stato acquistato.");
         }
+
+        // Recupera le recensioni associate agli acquisti del gioco
+        List<Recensione> recensioni = recensioneRepository.findAllByAcquisti(acquistiByVideogioco);
+
+        // Aggiunge le recensioni alla lista delle recensioni del gioco
+        recensioniVideogioco.addAll(recensioni);
+
         return recensioniVideogioco;
     }
 

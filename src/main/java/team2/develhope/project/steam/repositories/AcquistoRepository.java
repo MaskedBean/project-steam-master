@@ -18,7 +18,6 @@ public interface AcquistoRepository extends JpaRepository<Acquisto,Long> {
     public List<Acquisto> findAllByGioco(Optional<Videogioco> gioco);
 
 
-
-
+    List<Acquisto> findByUtente(Utente utente);
 
 }
